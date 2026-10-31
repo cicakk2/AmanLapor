@@ -13,7 +13,27 @@ if (fs.existsSync(envPath)) {
 // ---- Config ----
 const { PORT = 3000, ORG_NAME = 'Inspektorat Pengawas Daerah', GEMINI_API_KEY = '' } = process.env;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || crypto.randomBytes(9).toString('base64url');
-const CATS = ['pungli', 'bansos', 'pelayanan', 'fasilitas'];
+const CATS = ['pungli', 'bansos', 'pelayanan', 'fasilitas', 'lainnya'];
+const CAT_LABELS = {
+  pungli: 'Pungutan Liar',
+  bansos: 'Bantuan Sosial (Bansos)',
+  pelayanan: 'Pelayanan Publik Lambat',
+  fasilitas: 'Fasilitas Umum Rusak',
+  lainnya: 'Lainnya'
+};
+const STEP_LABELS = [
+  'Laporan Diterima',
+  'Sedang Diperiksa Petugas',
+  'Tindak Lanjut Lapangan',
+  'Selesai Ditindaklanjuti'
+];
+const URGENCY_LABELS = {
+  5: '5 Sangat Kritis Prioritas Utama',
+  4: '4 Tinggi Prioritas Tinggi',
+  3: '3 Sedang Prioritas Sedang',
+  2: '2 Rendah Prioritas Rendah',
+  1: '1 Sangat Rendah'
+};
 const AI_CATEGORIES = ['Pungli', 'Korupsi', 'Parkir Liar', 'Fasilitas Publik', 'Pelayanan Lambat', 'Spam/Tidak Penting', 'Lain-lain'];
 const CODE_RE = /^AMAN-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -39,6 +59,7 @@ CREATE TABLE IF NOT EXISTS reports (
   device_token TEXT,
   ai_category TEXT,
   ai_urgency INTEGER DEFAULT 3,
+  ai_source TEXT DEFAULT 'fallback',
   status INTEGER DEFAULT 0,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -59,6 +80,7 @@ for (const [t, c, type] of [
   ['reports', 'device_token', 'TEXT'],
   ['reports', 'ai_category', 'TEXT'],
   ['reports', 'ai_urgency', 'INTEGER'],
+  ['reports', 'ai_source', 'TEXT'],
   ['messages', 'name', 'TEXT']
 ]) {
   if (!db.prepare(`PRAGMA table_info(${t})`).all().some(x => x.name === c)) {
@@ -138,7 +160,7 @@ function fallbackAnalyzeReport(category, description, location) {
     /(.)\1{5,}/.test(trimmed) ||
     !/[aiueo]/i.test(trimmed)
   ) {
-    return { kategori: 'Spam/Tidak Penting', urgensi_score: 1 };
+    return { kategori: 'Spam/Tidak Penting', urgensi_score: 1, source: 'fallback' };
   }
 
   let kategori = 'Lain-lain';
@@ -167,7 +189,7 @@ function fallbackAnalyzeReport(category, description, location) {
     urgensi_score = 2;
   }
 
-  return { kategori, urgensi_score };
+  return { kategori, urgensi_score, source: 'fallback' };
 }
 
 async function analyzeReportWithGemini(category, description, location) {
@@ -216,18 +238,21 @@ async function analyzeReportWithGemini(category, description, location) {
     const scoreNum = Number(parsed?.urgensi_score);
     const urgensi_score = Number.isInteger(scoreNum) && scoreNum >= 1 && scoreNum <= 5 ? scoreNum : fallback.urgensi_score;
 
-    return { kategori, urgensi_score };
+    return { kategori, urgensi_score, source: 'gemini' };
   } catch (_err) {
     clearTimeout(timer);
     return fallback;
   }
 }
 
-// Backfill laporan lama yang belum memiliki kategori AI
-for (const row of db.prepare('SELECT code, category, location, description, ai_category, ai_urgency FROM reports').all()) {
-  if (!row.ai_category || !AI_CATEGORIES.includes(row.ai_category)) {
+// Backfill laporan lama yang belum memiliki kategori AI atau sumber analisis
+for (const row of db.prepare('SELECT code, category, location, description, ai_category, ai_urgency, ai_source FROM reports').all()) {
+  if (!row.ai_category || !AI_CATEGORIES.includes(row.ai_category) || !row.ai_source) {
     const ai = fallbackAnalyzeReport(row.category, row.description || '', row.location || '');
-    db.prepare('UPDATE reports SET ai_category=?, ai_urgency=? WHERE code=?').run(ai.kategori, ai.urgensi_score, row.code);
+    const kat = AI_CATEGORIES.includes(row.ai_category) ? row.ai_category : ai.kategori;
+    const urg = (row.ai_urgency >= 1 && row.ai_urgency <= 5) ? row.ai_urgency : ai.urgensi_score;
+    const src = row.ai_source === 'gemini' ? 'gemini' : 'fallback';
+    db.prepare('UPDATE reports SET ai_category=?, ai_urgency=?, ai_source=? WHERE code=?').run(kat, urg, src, row.code);
   }
 }
 
@@ -255,18 +280,20 @@ const getPublicReport = code => {
   };
 };
 
-// Versi admin: menyertakan hasil analisis AI & lampiran bukti
+// Versi admin: menyertakan hasil analisis AI, sumber kategorisasi (gemini vs fallback), & lampiran bukti
 const getAdminReport = code => {
   const r = getReportRaw(code);
   if (!r) return null;
   const fallback = fallbackAnalyzeReport(r.category, r.description || '', r.location || '');
   const kategori = AI_CATEGORIES.includes(r.ai_category) ? r.ai_category : fallback.kategori;
   const urgensi_score = (r.ai_urgency >= 1 && r.ai_urgency <= 5) ? Number(r.ai_urgency) : fallback.urgensi_score;
+  const source = r.ai_source === 'gemini' ? 'gemini' : 'fallback';
   return {
     ...r,
     ai_category: kategori,
     ai_urgency: urgensi_score,
-    ai_analysis: { kategori, urgensi_score }
+    ai_source: source,
+    ai_analysis: { kategori, urgensi_score, source }
   };
 };
 
@@ -416,8 +443,8 @@ app.post('/api/reports', limit('create', 6, 15 * 60e3), async (req, res) => {
     const aiResult = await analyzeReportWithGemini(category, description, location);
 
     db.prepare(`
-      INSERT INTO reports (code, category, location, incident_date, description, attachments, device_token, ai_category, ai_urgency)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO reports (code, category, location, incident_date, description, attachments, device_token, ai_category, ai_urgency, ai_source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       code,
       category,
@@ -427,7 +454,8 @@ app.post('/api/reports', limit('create', 6, 15 * 60e3), async (req, res) => {
       JSON.stringify(savedAttachments),
       deviceToken || null,
       aiResult.kategori,
-      aiResult.urgensi_score
+      aiResult.urgensi_score,
+      aiResult.source || 'fallback'
     );
 
     addMsg(code, 'system', null, 'Laporan Anda telah kami terima dengan aman dan sedang menunggu peninjauan petugas.');
@@ -496,54 +524,83 @@ app.post('/api/admin/login', limit('login', 5, 60e3), (req, res) => {
 app.use('/api/admin', auth);
 
 app.get('/api/admin/reports', (req, res) => {
-  const { status, category, ai_category, urgency, q } = req.query;
-  const w = [], p = [];
+  const { status, category, ai_category, urgency, ai_source, q } = req.query;
 
-  if (/^[0-3]$/.test(status)) { w.push('status=?'); p.push(+status); }
-  if (CATS.includes(category)) { w.push('category=?'); p.push(category); }
-  if (AI_CATEGORIES.includes(ai_category)) { w.push('ai_category=?'); p.push(ai_category); }
-  if (/^[1-5]$/.test(urgency)) { w.push('ai_urgency=?'); p.push(+urgency); }
-  if (q) {
-    const kw = `%${sanitizeText(q, 80)}%`;
-    w.push('(code LIKE ? OR location LIKE ? OR description LIKE ?)');
-    p.push(kw, kw, kw);
-  }
-
-  const rows = db.prepare(`
-    SELECT code, category, location, incident_date, description, ai_category, ai_urgency, status, created_at
+  const allRows = db.prepare(`
+    SELECT code, category, location, incident_date, description, ai_category, ai_urgency, ai_source, status, created_at
     FROM reports
-    ${w.length ? 'WHERE ' + w.join(' AND ') : ''}
     ORDER BY ai_urgency DESC, created_at DESC
-    LIMIT 200
-  `).all(...p);
+    LIMIT 500
+  `).all();
 
-  const reports = rows.map(r => {
+  const mapped = allRows.map(r => {
     const fb = fallbackAnalyzeReport(r.category, r.description || '', r.location || '');
     const kat = AI_CATEGORIES.includes(r.ai_category) ? r.ai_category : fb.kategori;
     const urg = (r.ai_urgency >= 1 && r.ai_urgency <= 5) ? Number(r.ai_urgency) : fb.urgensi_score;
+    const src = r.ai_source === 'gemini' ? 'gemini' : 'fallback';
+    const st = [0, 1, 2, 3].includes(Number(r.status)) ? Number(r.status) : 0;
     return {
       code: r.code,
       category: r.category,
-      location: r.location,
-      incident_date: r.incident_date,
+      category_label: CAT_LABELS[r.category] || r.category || 'Lainnya',
+      location: r.location || '',
+      incident_date: r.incident_date || '',
+      description: r.description || '',
       ai_category: kat,
       ai_urgency: urg,
-      ai_analysis: { kategori: kat, urgensi_score: urg },
-      status: r.status,
+      ai_source: src,
+      ai_analysis: { kategori: kat, urgensi_score: urg, source: src },
+      status: st,
+      status_label: STEP_LABELS[st] || '',
       created_at: r.created_at
     };
   });
 
-  const byStatus = [0, 1, 2, 3].map(s => db.prepare('SELECT COUNT(*) n FROM reports WHERE status=?').get(s).n);
-  const criticalCount = db.prepare('SELECT COUNT(*) n FROM reports WHERE ai_urgency >= 4 AND status < 3').get().n;
+  const kw = sanitizeText(q, 100).toLowerCase();
+
+  const reports = mapped.filter(r => {
+    if (status !== undefined && status !== '' && /^[0-3]$/.test(String(status)) && r.status !== Number(status)) return false;
+    if (category && CATS.includes(category) && r.category !== category) return false;
+    if (ai_category && AI_CATEGORIES.includes(ai_category) && r.ai_category !== ai_category) return false;
+    if (urgency !== undefined && urgency !== '' && /^[1-5]$/.test(String(urgency)) && r.ai_urgency !== Number(urgency)) return false;
+    if ((ai_source === 'gemini' || ai_source === 'fallback') && r.ai_source !== ai_source) return false;
+
+    if (kw) {
+      const sourceText = r.ai_source === 'gemini' ? 'gemini ai' : 'filter fallback';
+      const urgText = `skor ${r.ai_urgency}/5 ${URGENCY_LABELS[r.ai_urgency] || ''}`;
+      const haystack = [
+        r.code,
+        r.category,
+        r.category_label,
+        r.ai_category,
+        sourceText,
+        urgText,
+        r.status_label,
+        r.location,
+        r.incident_date,
+        r.created_at,
+        r.description
+      ].join(' ').toLowerCase();
+      if (!haystack.includes(kw)) return false;
+    }
+    return true;
+  });
+
+  const byStatus = [0, 1, 2, 3].map(s => mapped.filter(r => r.status === s).length);
+  const criticalCount = mapped.filter(r => r.ai_urgency >= 4 && r.status < 3).length;
+  const geminiCount = mapped.filter(r => r.ai_source === 'gemini').length;
+  const fallbackCount = mapped.filter(r => r.ai_source !== 'gemini').length;
 
   res.json({
     reports,
     aiCategories: AI_CATEGORIES,
+    aiConfigured: Boolean(GEMINI_API_KEY),
     stats: {
-      total: byStatus.reduce((a, b) => a + b, 0),
+      total: mapped.length,
       byStatus,
       criticalCount,
+      geminiCount,
+      fallbackCount,
       today: db.prepare("SELECT COUNT(*) n FROM reports WHERE date(created_at)=date('now')").get().n
     }
   });

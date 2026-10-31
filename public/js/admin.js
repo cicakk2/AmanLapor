@@ -49,50 +49,145 @@ function renderAiCatBadge(aiCat) {
   return h('span', `inline-block px-2 py-0.5 rounded font-label-sm text-label-sm ${cls}`, cat);
 }
 
+// Badge kejelasan sumber kategorisasi: Gemini AI vs Filter Fallback
+function renderAiSourceBadge(source) {
+  const isGemini = source === 'gemini';
+  if (isGemini) {
+    return h(
+      'span',
+      'inline-flex items-center gap-1 px-2 py-0.5 rounded font-label-sm text-label-sm bg-primary-fixed text-on-primary-fixed font-semibold',
+      '',
+      [icon('auto_awesome', 'text-[14px]'), h('span', '', 'Gemini AI')]
+    );
+  }
+  return h(
+    'span',
+    'inline-flex items-center gap-1 px-2 py-0.5 rounded font-label-sm text-label-sm bg-surface-container-high text-on-surface-variant font-medium',
+    '',
+    [icon('rule', 'text-[14px]'), h('span', '', 'Filter Fallback')]
+  );
+}
+
+function updateEngineBanner(aiConfigured) {
+  const title = $('aiEngineTitle');
+  const desc = $('aiEngineDesc');
+  const badge = $('aiEngineBadge');
+  const iconEl = $('aiEngineIcon');
+  const banner = $('aiEngineBanner');
+  if (!title || !desc || !badge || !iconEl || !banner) return;
+
+  if (aiConfigured) {
+    banner.className = 'card p-space-md flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border-l-4 border-primary';
+    iconEl.textContent = 'auto_awesome';
+    iconEl.className = 'material-symbols-outlined text-primary text-[22px] shrink-0';
+    title.textContent = 'Mesin Kategorisasi Aktif: Google Gemini 2.5 Flash (AI)';
+    desc.textContent = 'API Key Gemini terdeteksi. Laporan baru dianalisis langsung oleh AI Gemini 2.5 Flash (dengan Filter Fallback sebagai cadangan otomatis bila jaringan terputus).';
+    badge.textContent = '✨ Mode Gemini AI Aktif';
+    badge.className = 'px-3 py-1 rounded-full font-label-sm text-label-sm font-semibold bg-primary-fixed text-on-primary-fixed self-start sm:self-center shrink-0';
+  } else {
+    banner.className = 'card p-space-md flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border-l-4 border-secondary';
+    iconEl.textContent = 'rule';
+    iconEl.className = 'material-symbols-outlined text-secondary text-[22px] shrink-0';
+    title.textContent = 'Mesin Kategorisasi Aktif: Filter Fallback (Aturan Kata Kunci Lokal)';
+    desc.textContent = 'GEMINI_API_KEY belum diisi di .env. Seluruh laporan dikategorikan menggunakan mesin Filter Fallback berbasis pencocokan kata kunci.';
+    badge.textContent = '⚙️ Mode Filter Fallback';
+    badge.className = 'px-3 py-1 rounded-full font-label-sm text-label-sm font-semibold bg-secondary-fixed text-on-secondary-fixed self-start sm:self-center shrink-0';
+  }
+}
+
+let allReportsCache = [];
+
 function enter() {
   show($('login'), false);
   show($('app'), true);
   show($('who'), true);
+  show($('logoutMobile'), true, 'block');
   $('whoName').textContent = sessionStorage.getItem('nm') || 'Petugas';
 
-  opts($('fs'), 'Semua Status', STEPS.map((s, i) => [i, s.t]));
-  opts($('fc'), 'Semua Kategori Warga', Object.entries(CATS));
-  opts($('fAiCat'), 'Semua Kategori AI', AI_CATS.map(c => [c, `AI: ${c}`]));
+  opts($('fs'), 'Semua Status Penanganan', STEPS.map((s, i) => [String(i), `Status: ${s.t}`]));
+  opts($('fc'), 'Semua Topik Warga', Object.entries(CATS).map(([k, v]) => [k, `Topik Warga: ${v}`]));
+  opts($('fAiCat'), 'Semua Kategori Triase', AI_CATS.map(c => [c, `Kategori Triase: ${c}`]));
   opts(
     $('fUrgency'),
     'Semua Skala Urgensi',
-    [5, 4, 3, 2, 1].map(u => [u, `Urgensi: ${URGENCY_META[u].label}`])
+    [5, 4, 3, 2, 1].map(u => [String(u), `Urgensi: ${URGENCY_META[u].label}`])
   );
+  opts($('fAiSource'), 'Semua Sumber Triase', [
+    ['gemini', 'Sumber: Gemini AI'],
+    ['fallback', 'Sumber: Filter Fallback'],
+  ]);
 
-  loadList().catch(() => {});
+  loadList(true).catch(() => {});
 }
 
-async function loadList() {
-  const qs = new URLSearchParams({
-    q: $('q')?.value || '',
-    status: $('fs')?.value || '',
-    category: $('fc')?.value || '',
-    ai_category: $('fAiCat')?.value || '',
-    urgency: $('fUrgency')?.value || '',
+async function loadList(fetchFresh = true) {
+  if (fetchFresh || !allReportsCache.length) {
+    const { reports, stats, aiConfigured } = await api('/reports');
+    allReportsCache = Array.isArray(reports) ? reports : [];
+    updateEngineBanner(Boolean(aiConfigured));
+
+    $('stats').replaceChildren(
+      ...[
+        ['Total Laporan', stats.total],
+        ['Masuk Hari Ini', stats.today],
+        ['Urgensi Tinggi (4-5)', stats.criticalCount ?? 0],
+        ['Hasil Gemini AI', stats.geminiCount ?? 0],
+        ['Hasil Filter Fallback', stats.fallbackCount ?? 0],
+        [STEPS[3].t, stats.byStatus[3]],
+      ].map(([t, n]) =>
+        h('div', 'card p-space-md', '', [
+          h('div', 'font-headline-md text-headline-md text-primary', String(n)),
+          h('div', 'font-label-sm text-label-sm text-on-surface-variant', t),
+        ])
+      )
+    );
+  }
+
+  const qVal = ($('q')?.value || '').trim().toLowerCase();
+  const fsVal = $('fs')?.value ?? '';
+  const fcVal = $('fc')?.value ?? '';
+  const fAiCatVal = $('fAiCat')?.value ?? '';
+  const fUrgencyVal = $('fUrgency')?.value ?? '';
+  const fAiSourceVal = $('fAiSource')?.value ?? '';
+
+  const filtered = allReportsCache.filter(r => {
+    if (fsVal !== '' && String(r.status) !== String(fsVal)) return false;
+    if (fcVal !== '' && String(r.category) !== String(fcVal)) return false;
+    if (fAiCatVal !== '' && String(r.ai_category) !== String(fAiCatVal)) return false;
+    if (fUrgencyVal !== '' && String(r.ai_urgency) !== String(fUrgencyVal)) return false;
+    if (fAiSourceVal !== '' && String(r.ai_source || 'fallback') !== String(fAiSourceVal)) return false;
+
+    if (qVal) {
+      const catWargaLabel = CATS[r.category] || r.category || 'Lainnya';
+      const statusLabel = STEPS[r.status]?.t || '';
+      const urgMetaLabel = URGENCY_META[r.ai_urgency]?.label || '';
+      const sourceLabel = r.ai_source === 'gemini' ? 'gemini ai' : 'filter fallback';
+      const searchableText = [
+        r.code,
+        r.ai_category,
+        r.category,
+        catWargaLabel,
+        sourceLabel,
+        `skor ${r.ai_urgency}/5`,
+        urgMetaLabel,
+        statusLabel,
+        r.location,
+        r.incident_date,
+        fmtDate(r.incident_date),
+        fmt(r.created_at),
+        r.description || '',
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      // Mendukung pencarian multi-kata (setiap kata dalam input harus cocok di salah satu kolom)
+      const tokens = qVal.split(/\s+/).filter(Boolean);
+      if (!tokens.every(tk => searchableText.includes(tk))) return false;
+    }
+    return true;
   });
-  const { reports, stats } = await api('/reports?' + qs.toString());
 
-  $('stats').replaceChildren(
-    ...[
-      ['Total Laporan', stats.total],
-      ['Masuk Hari Ini', stats.today],
-      ['Urgensi Tinggi (4-5)', stats.criticalCount ?? 0],
-      [STEPS[0].t, stats.byStatus[0]],
-      [STEPS[3].t, stats.byStatus[3]],
-    ].map(([t, n]) =>
-      h('div', 'card p-space-md', '', [
-        h('div', 'font-headline-md text-headline-md text-primary', String(n)),
-        h('div', 'font-label-sm text-label-sm text-on-surface-variant', t),
-      ])
-    )
-  );
-
-  if (!reports.length) {
+  if (!filtered.length) {
     $('rows').replaceChildren(
       h('tr', '', '', [
         Object.assign(
@@ -105,17 +200,23 @@ async function loadList() {
   }
 
   $('rows').replaceChildren(
-    ...reports.map(r => {
+    ...filtered.map(r => {
       const tr = h(
         'tr',
         'cursor-pointer border-b border-surface-container/60 hover:bg-surface-container-low transition-colors ' +
           (r.code === cur ? 'bg-surface-container-low' : ''),
         '',
         [
-          h('td', 'p-space-md font-semibold whitespace-nowrap', r.code),
-          h('td', 'py-space-sm pr-2', '', [renderAiCatBadge(r.ai_category)]),
+          h('td', 'p-space-md whitespace-nowrap', '', [
+            h('div', 'font-semibold text-on-surface', r.code),
+            h('div', 'font-label-sm text-label-sm text-on-surface-variant truncate max-w-[160px]', r.location || '-'),
+          ]),
+          h('td', 'py-space-sm pr-2', '', [
+            renderAiCatBadge(r.ai_category),
+            h('div', 'font-label-sm text-label-sm text-on-surface-variant mt-0.5', `Warga: ${CATS[r.category] || r.category || 'Lainnya'}`),
+          ]),
+          h('td', 'py-space-sm pr-2 whitespace-nowrap', '', [renderAiSourceBadge(r.ai_source)]),
           h('td', 'py-space-sm pr-2 whitespace-nowrap', '', [renderUrgencyBadge(r.ai_urgency)]),
-          h('td', 'py-space-sm pr-2 max-w-[140px] truncate', r.location || '-'),
           h('td', 'py-space-sm pr-2 whitespace-nowrap', '', [
             h(
               'span',
@@ -153,7 +254,7 @@ async function openDetail(code) {
   const msg = h('input', 'inp flex-1', '');
   msg.placeholder = 'Tulis tanggapan ramah untuk pelapor...';
   msg.maxLength = 1000;
-  const form = h('form', 'flex gap-space-sm', '', [msg, h('button', 'btn', 'Kirim')]);
+  const form = h('form', 'flex flex-col sm:flex-row gap-space-sm', '', [msg, h('button', 'btn shrink-0', 'Kirim')]);
   form.onsubmit = async e => {
     e.preventDefault();
     if (!msg.value.trim()) return;
@@ -172,29 +273,45 @@ async function openDetail(code) {
       h('div', 'font-body-sm text-body-sm', v),
     ]);
 
-  // Panel Khusus Hasil Analisis AI (Hanya tampil di Dashboard Admin)
+  // Panel Khusus Hasil Triase (Menjelaskan dengan transparan apakah hasil Gemini AI atau Filter Fallback)
   const urgScore = Number(r.ai_urgency) || 3;
   const urgMeta = URGENCY_META[urgScore] || URGENCY_META[3];
-  const aiPanel = h('div', 'bg-surface-container-low rounded-xl p-space-md border border-outline-variant/40 flex flex-col gap-space-xs', '', [
-    h('div', 'flex items-center justify-between gap-2', '', [
-      h('span', 'font-label-sm text-label-sm font-semibold text-primary flex items-center gap-1', '', [
-        icon('auto_awesome', 'text-[16px]'),
-        h('span', '', 'Hasil Triase AI (Gemini 2.5 Flash • Khusus Petugas)'),
+  const isGemini = r.ai_source === 'gemini';
+  const sourceNote = isGemini
+    ? 'Laporan ini dikategorikan secara kontekstual oleh model AI Google Gemini 2.5 Flash.'
+    : 'Laporan ini dikategorikan oleh sistem Filter Fallback (pencocokan kata kunci otomatis) karena API Key Gemini belum diatur atau sedang tidak terhubung.';
+
+  const aiPanel = h(
+    'div',
+    'bg-surface-container-low rounded-xl p-space-md border border-outline-variant/40 flex flex-col gap-space-sm',
+    '',
+    [
+      h('div', 'flex flex-wrap items-center justify-between gap-2', '', [
+        h('span', 'font-label-sm text-label-sm font-semibold text-primary flex items-center gap-1', '', [
+          icon(isGemini ? 'auto_awesome' : 'rule', 'text-[16px]'),
+          h('span', '', 'Detail Triase Otomatis (Khusus Petugas)'),
+        ]),
+        renderAiSourceBadge(r.ai_source),
       ]),
-    ]),
-    h('div', 'grid grid-cols-2 gap-space-sm pt-1', '', [
-      h('div', 'flex flex-col gap-1', '', [
-        h('span', 'font-label-sm text-label-sm text-on-surface-variant', 'Kategori AI'),
-        h('div', '', '', [renderAiCatBadge(r.ai_category)]),
-      ]),
-      h('div', 'flex flex-col gap-1', '', [
-        h('span', 'font-label-sm text-label-sm text-on-surface-variant', 'Skor Urgensi (1-5)'),
-        h('div', '', '', [
-          h('span', `inline-block px-2 py-0.5 rounded font-label-sm text-label-sm ${urgMeta.badge}`, urgMeta.label),
+      h('div', 'grid grid-cols-1 sm:grid-cols-2 gap-space-sm pt-1', '', [
+        h('div', 'flex flex-col gap-1', '', [
+          h('span', 'font-label-sm text-label-sm text-on-surface-variant', 'Kategori Hasil Triase'),
+          h('div', '', '', [renderAiCatBadge(r.ai_category)]),
+        ]),
+        h('div', 'flex flex-col gap-1', '', [
+          h('span', 'font-label-sm text-label-sm text-on-surface-variant', 'Skor Urgensi (1-5)'),
+          h('div', '', '', [
+            h('span', `inline-block px-2 py-0.5 rounded font-label-sm text-label-sm ${urgMeta.badge}`, urgMeta.label),
+          ]),
         ]),
       ]),
-    ]),
-  ]);
+      h(
+        'div',
+        'text-on-surface-variant font-label-sm text-label-sm bg-surface-container-lowest p-2.5 rounded-lg border border-outline-variant/20',
+        `Sumber Kategorisasi: ${isGemini ? 'Google Gemini 2.5 Flash (AI)' : 'Filter Fallback (Kata Kunci)'} — ${sourceNote}`
+      ),
+    ]
+  );
 
   const atts = Array.isArray(r.attachments) ? r.attachments : [];
   const evidenceNodes = atts.length
@@ -236,9 +353,12 @@ async function openDetail(code) {
   ]);
 
   $('detail').replaceChildren(
-    h('div', 'flex items-center justify-between', '', [
+    h('div', 'flex flex-wrap items-center justify-between gap-2', '', [
       h('h2', 'font-title text-title', code),
-      renderUrgencyBadge(r.ai_urgency),
+      h('div', 'flex items-center gap-1.5', '', [
+        renderAiSourceBadge(r.ai_source),
+        renderUrgencyBadge(r.ai_urgency),
+      ]),
     ]),
     aiPanel,
     row('Kategori Pilihan Warga', CATS[r.category] || r.category),
@@ -252,7 +372,10 @@ async function openDetail(code) {
     evidenceSection,
     row('Perbarui Status Penanganan', ''),
     sel,
-    h('div', 'flex flex-col gap-space-xs max-h-64 overflow-y-auto', '',
+    h(
+      'div',
+      'flex flex-col gap-space-xs max-h-64 overflow-y-auto',
+      '',
       r.messages.map(m =>
         h(
           'div',
@@ -294,19 +417,20 @@ $('login').onsubmit = async e => {
 };
 
 $('logout').onclick = logout;
+$('logoutMobile')?.addEventListener('click', logout);
 
-['q', 'fs', 'fc', 'fAiCat', 'fUrgency'].forEach(id => {
+['q', 'fs', 'fc', 'fAiCat', 'fUrgency', 'fAiSource'].forEach(id => {
   const el = $(id);
   if (el) {
-    el.addEventListener(id === 'q' ? 'input' : 'change', () => loadList().catch(() => {}));
+    el.addEventListener(id === 'q' ? 'input' : 'change', () => loadList(false).catch(() => {}));
   }
 });
 
 $('resetFiltersBtn')?.addEventListener('click', () => {
-  ['q', 'fs', 'fc', 'fAiCat', 'fUrgency'].forEach(id => {
+  ['q', 'fs', 'fc', 'fAiCat', 'fUrgency', 'fAiSource'].forEach(id => {
     if ($(id)) $(id).value = '';
   });
-  loadList().catch(() => {});
+  loadList(false).catch(() => {});
 });
 
 if (token) enter();

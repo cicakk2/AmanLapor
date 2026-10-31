@@ -3,15 +3,38 @@
 <style type="text/tailwindcss">@layer components{.inp{@apply w-full h-11 px-space-md bg-surface-container-low rounded-lg font-body-sm text-body-sm focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/40}.btn{@apply h-11 px-space-lg bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:bg-primary-container active:scale-95 transition-all}.card{@apply bg-surface-container-lowest rounded-xl shadow-sm}}</style>
 </head>
 <body class="bg-surface font-body-md text-on-surface antialiased">
-<header class="bg-surface-container-lowest shadow-sm"><div class="h-16 max-w-[1140px] mx-auto px-gutter flex items-center justify-between">
-  <div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-primary">shield</span><span class="font-title text-title">AmanLapor</span><span class="font-label-sm text-label-sm text-on-surface-variant">Dashboard Petugas &amp; Triase Cerdas</span></div>
-  <div class="hidden items-center gap-space-md font-label-md text-label-md" id="who"><span id="whoName"></span><button class="text-primary hover:underline" id="logout">Keluar</button></div>
-</div></header>
-<main class="max-w-[1140px] mx-auto px-gutter py-space-xl">
-  <form class="card max-w-sm mx-auto p-space-xl flex flex-col gap-space-md" id="login">
+<header class="bg-surface-container-lowest shadow-sm">
+  <div class="h-16 max-w-[1140px] mx-auto px-4 lg:px-gutter flex items-center justify-between">
+    <div class="flex items-center gap-space-sm min-w-0">
+      <span class="material-symbols-outlined text-primary shrink-0">shield</span>
+      <span class="font-title text-title truncate">AmanLapor</span>
+      <span class="font-label-sm text-label-sm text-on-surface-variant hidden sm:inline">Dashboard Petugas &amp; Triase Cerdas</span>
+    </div>
+    <div class="flex items-center gap-space-md">
+      <div class="hidden items-center gap-space-md font-label-md text-label-md" id="who">
+        <span id="whoName"></span>
+        <button class="text-primary hover:underline" id="logout" type="button">Keluar</button>
+      </div>
+      <!-- Hamburger Button khusus Mobile/Tablet (< lg), tidak mengubah tampilan Desktop -->
+      <button aria-expanded="false" aria-label="Buka menu navigasi" class="lg:hidden w-10 h-10 rounded-lg bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-on-surface transition-colors" id="mobileMenuBtn" type="button">
+        <span class="material-symbols-outlined text-[24px]" id="mobileMenuIcon">menu</span>
+      </button>
+    </div>
+  </div>
+  <!-- Menu Dropdown khusus Mobile/Tablet (< lg) -->
+  <div class="hidden lg:hidden flex-col gap-1 px-4 pb-space-md bg-surface-container-lowest border-t border-surface-container shadow-md" id="mobileNavMenu">
+    <a class="px-space-md py-2.5 rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low" href="index.html">Beranda Publik</a>
+    <a class="px-space-md py-2.5 rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low" href="lapor.html">Buat Pengaduan</a>
+    <a class="px-space-md py-2.5 rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low" href="status.html">Cek Status Laporan</a>
+    <a class="px-space-md py-2.5 rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low" href="panduan.html">Panduan Warga</a>
+    <button class="hidden text-left px-space-md py-2.5 rounded-lg font-label-md text-label-md text-error hover:bg-error-container/30" id="logoutMobile" type="button">Keluar dari Sesi Petugas</button>
+  </div>
+</header>
+<main class="max-w-[1140px] mx-auto px-gutter-mobile sm:px-gutter py-space-lg sm:py-space-xl">
+  <form class="card max-w-sm mx-auto p-space-lg sm:p-space-xl flex flex-col gap-space-md" id="login">
     <div class="flex flex-col gap-1">
       <h1 class="font-headline-sm text-headline-sm">Masuk Ruang Petugas</h1>
-      <p class="font-body-sm text-body-sm text-on-surface-variant">Silakan masuk untuk meninjau laporan warga dan hasil analisis prioritas.</p>
+      <p class="font-body-sm text-body-sm text-on-surface-variant">Silakan masuk untuk meninjau laporan warga, sumber kategorisasi (AI / Fallback), dan skala prioritas.</p>
     </div>
     <input class="inp" id="name" placeholder="Nama petugas pemeriksa" maxlength="50" autocomplete="username">
     <input class="inp" id="pass" type="password" placeholder="Kata sandi petugas" autocomplete="current-password" required>
@@ -19,39 +42,62 @@
     <button class="btn">Masuk ke Dashboard</button>
   </form>
   <section class="hidden flex-col gap-space-lg" id="app">
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-space-md" id="stats"></div>
+    <!-- Banner Status Mesin Kategorisasi (Gemini AI vs Filter Fallback) -->
+    <div class="card p-space-md flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border-l-4 border-primary" id="aiEngineBanner">
+      <div class="flex items-start sm:items-center gap-space-sm">
+        <span class="material-symbols-outlined text-primary text-[22px] shrink-0" id="aiEngineIcon">info</span>
+        <div class="flex flex-col">
+          <span class="font-label-md text-label-md font-semibold text-on-surface" id="aiEngineTitle">Memeriksa Status Mesin Kategorisasi...</span>
+          <span class="font-label-sm text-label-sm text-on-surface-variant" id="aiEngineDesc">Menampilkan transparansi apakah laporan dikategorikan oleh Google Gemini 2.5 Flash AI atau Filter Fallback.</span>
+        </div>
+      </div>
+      <span class="px-3 py-1 rounded-full font-label-sm text-label-sm font-semibold self-start sm:self-center shrink-0" id="aiEngineBadge">-</span>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-space-sm sm:gap-space-md" id="stats"></div>
+
     <div class="card p-space-md flex flex-col gap-space-sm">
-      <div class="flex items-center justify-between">
+      <div class="flex flex-wrap items-center justify-between gap-2">
         <span class="font-label-md text-label-md font-semibold text-on-surface flex items-center gap-1">
           <span class="material-symbols-outlined text-primary text-[18px]">filter_alt</span>
           Pencarian &amp; Filter Triase Laporan (Khusus Petugas)
         </span>
         <button class="font-label-sm text-label-sm text-primary hover:underline" id="resetFiltersBtn" type="button">Atur Ulang Filter</button>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-space-sm">
-        <input class="inp lg:col-span-2" id="q" placeholder="Cari kata kunci cerita, lokasi, atau kode tiket...">
-        <select class="inp" id="fAiCat" aria-label="Filter Kategori AI"></select>
-        <select class="inp" id="fUrgency" aria-label="Filter Skala Urgensi AI"></select>
-        <select class="inp" id="fs" aria-label="Filter Status Penanganan"></select>
-      </div>
-      <div class="hidden">
-        <select class="inp" id="fc" aria-label="Filter Kategori Warga"></select>
+      <div class="flex flex-col gap-space-sm">
+        <div class="relative flex items-center">
+          <span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-[20px] pointer-events-none">search</span>
+          <input class="inp pl-10" id="q" placeholder="Cari apa saja: kode tiket, kategori (Pungli, Bansos, Fasilitas, dll.), lokasi, status, sumber (Gemini / Fallback), urgensi, atau isi laporan...">
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-space-sm">
+          <select class="inp" id="fAiCat" aria-label="Filter Kategori Hasil Triase"></select>
+          <select class="inp" id="fc" aria-label="Filter Topik Pilihan Warga"></select>
+          <select class="inp" id="fUrgency" aria-label="Filter Skala Urgensi"></select>
+          <select class="inp" id="fAiSource" aria-label="Filter Sumber Kategorisasi"></select>
+          <select class="inp" id="fs" aria-label="Filter Status Penanganan"></select>
+        </div>
       </div>
     </div>
-    <div class="grid lg:grid-cols-12 gap-space-lg items-start">
-      <div class="card lg:col-span-7 overflow-x-auto"><table class="w-full text-left font-body-sm text-body-sm">
-        <thead class="text-on-surface-variant font-label-sm text-label-sm border-b border-surface-container">
-          <tr>
-            <th class="p-space-md">Kode Tiket</th>
-            <th>Kategori AI</th>
-            <th>Urgensi AI</th>
-            <th>Lokasi</th>
-            <th>Status</th>
-            <th class="pr-space-md">Waktu Masuk</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody></table></div>
-      <div class="card lg:col-span-5 p-space-lg flex flex-col gap-space-md" id="detail"><p class="text-on-surface-variant">Pilih salah satu laporan di sebelah kiri untuk membaca cerita lengkap warga, melihat lampiran bukti, dan menindaklanjuti.</p></div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+      <div class="card lg:col-span-7 overflow-x-auto w-full">
+        <table class="w-full min-w-[640px] text-left font-body-sm text-body-sm">
+          <thead class="text-on-surface-variant font-label-sm text-label-sm border-b border-surface-container">
+            <tr>
+              <th class="p-space-md">Kode Tiket</th>
+              <th>Kategori Triase</th>
+              <th>Sumber Triase</th>
+              <th>Urgensi</th>
+              <th>Status</th>
+              <th class="pr-space-md">Waktu Masuk</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="card lg:col-span-5 p-space-md sm:p-space-lg flex flex-col gap-space-md w-full" id="detail">
+        <p class="text-on-surface-variant">Pilih salah satu laporan pada daftar untuk membaca cerita lengkap warga, melihat sumber kategorisasi (AI vs Filter Fallback), memeriksa bukti, dan menindaklanjuti.</p>
+      </div>
     </div>
   </section>
 </main>

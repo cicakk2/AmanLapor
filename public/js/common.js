@@ -11,6 +11,7 @@ const CATS = {
   bansos: 'Bantuan Sosial (Bansos)',
   pelayanan: 'Pelayanan Publik Lambat',
   fasilitas: 'Fasilitas Umum Rusak',
+  lainnya: 'Lainnya',
 };
 
 const AI_CATS = [
@@ -189,6 +190,43 @@ async function syncDeviceQuota() {
 
 // Inisialisasi device_token otomatis saat halaman dibuka
 getDeviceToken();
+
+// ---- Hamburger Button & Navigasi Mobile Responsif ----
+function initResponsiveHeader() {
+  const btn = document.getElementById('mobileMenuBtn');
+  const menu = document.getElementById('mobileNavMenu');
+  const iconEl = document.getElementById('mobileMenuIcon');
+  if (!btn || !menu) return;
+
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const isHidden = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden', !isHidden);
+    menu.classList.toggle('flex', isHidden);
+    btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+    if (iconEl) iconEl.textContent = isHidden ? 'close' : 'menu';
+  });
+
+  document.addEventListener('click', e => {
+    if (!menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
+      menu.classList.add('hidden');
+      menu.classList.remove('flex');
+      btn.setAttribute('aria-expanded', 'false');
+      if (iconEl) iconEl.textContent = 'menu';
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 1024 && !menu.classList.contains('hidden')) {
+      menu.classList.add('hidden');
+      menu.classList.remove('flex');
+      btn.setAttribute('aria-expanded', 'false');
+      if (iconEl) iconEl.textContent = 'menu';
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initResponsiveHeader);
 
 const year = new Date().getFullYear();
 document.querySelectorAll('footer span').forEach(e => {

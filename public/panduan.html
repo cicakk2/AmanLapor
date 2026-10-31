@@ -1,13 +1,25 @@
 <!DOCTYPE html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panduan Warga — AmanLapor</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>body{font-family:'Plus Jakarta Sans',sans-serif}</style></head>
-<body class="bg-[#f7f9fb] text-[#191c1e]">
-<header class="h-20 flex items-center justify-between max-w-[960px] mx-auto px-6 bg-white rounded-b-xl shadow-sm">
-  <a href="index.html" class="font-bold text-[#006948] text-lg">← Kembali ke Beranda AmanLapor</a>
-  <span class="text-xs font-semibold bg-[#85f8c4] text-[#002114] px-3 py-1 rounded-full">Identitas Anda Dijamin Anonim &amp; Terjaga 100%</span>
+<body class="bg-[#f7f9fb] text-[#191c1e] antialiased">
+<header class="max-w-[960px] mx-auto bg-white rounded-b-xl shadow-sm">
+  <div class="h-20 flex items-center justify-between px-4 sm:px-6">
+    <a href="index.html" class="font-bold text-[#006948] text-base sm:text-lg">← Kembali ke Beranda AmanLapor</a>
+    <span class="hidden lg:inline-block text-xs font-semibold bg-[#85f8c4] text-[#002114] px-3 py-1 rounded-full">Identitas Anda Dijamin Anonim &amp; Terjaga 100%</span>
+    <button aria-expanded="false" aria-label="Buka Menu Navigasi" class="lg:hidden w-11 h-11 rounded-lg bg-[#f2f4f6] hover:bg-[#e6e8ea] flex items-center justify-center text-[#191c1e] transition-colors cursor-pointer" id="mobileMenuBtn" type="button">
+      <span class="material-symbols-outlined text-[24px]" id="mobileMenuIcon">menu</span>
+    </button>
+  </div>
+  <div class="hidden lg:hidden flex-col gap-1 px-4 pb-4 pt-2 bg-white border-t border-gray-100 rounded-b-xl text-sm font-medium" id="mobileNavMenu">
+    <a class="px-4 py-3 rounded-lg text-[#3d4a42] hover:bg-[#f2f4f6] flex items-center gap-2.5" href="index.html"><span class="material-symbols-outlined text-[20px]">home</span>Beranda</a>
+    <a class="px-4 py-3 rounded-lg text-[#3d4a42] hover:bg-[#f2f4f6] flex items-center gap-2.5" href="lapor.html"><span class="material-symbols-outlined text-[20px]">add_circle</span>Buat Pengaduan</a>
+    <a class="px-4 py-3 rounded-lg text-[#3d4a42] hover:bg-[#f2f4f6] flex items-center gap-2.5" href="status.html"><span class="material-symbols-outlined text-[20px]">search</span>Cek Status Laporan</a>
+    <a aria-current="page" class="px-4 py-3 rounded-lg bg-[#e6e8ea] text-[#191c1e] font-semibold flex items-center gap-2.5" href="panduan.html"><span class="material-symbols-outlined text-[20px] text-[#006948]">menu_book</span>Panduan</a>
+  </div>
 </header>
 <main class="max-w-[760px] mx-auto px-6 py-12">
 <h1 class="text-3xl font-bold mb-3">Panduan Mudah Melapor untuk Warga</h1>
@@ -20,4 +32,5 @@
 <li><b>Batas Kenyamanan Bersama:</b> Setiap perangkat dapat memiliki maksimal <b>3 laporan aktif</b> secara bersamaan. Setelah salah satu laporan selesai ditindaklanjuti, Anda dapat mengirim laporan baru kembali.</li>
 </ol>
 </main>
+<script src="js/common.js"></script>
 </body></html>
