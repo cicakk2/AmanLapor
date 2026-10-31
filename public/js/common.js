@@ -11,5 +11,10 @@ const $ = id => document.getElementById(id);
 const h = (tag, cls = '', text = '', kids = []) => { const e = document.createElement(tag); e.className = cls; e.textContent = text; e.append(...kids); return e; };
 const icon = (name, cls = '') => h('span', 'material-symbols-outlined ' + cls, name);
 const fmt = d => d ? new Date(String(d).replace(' ', 'T') + 'Z').toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
+const fmtDate = d => {
+  if (!d) return '-';
+  const m = String(d).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : String(d);
+};
 const year = new Date().getFullYear();
 document.querySelectorAll('footer span').forEach(e => e.textContent = e.textContent.replace(/© \d{4}/, '© ' + year));

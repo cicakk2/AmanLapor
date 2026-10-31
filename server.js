@@ -8,23 +8,35 @@ const CATS = ['pungli', 'bansos', 'pelayanan', 'fasilitas'];
 const CODE_RE = /^AMAN-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 
 // ---- Database ----
-fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
+const UPLOAD_DIR = path.join(__dirname, 'data', 'uploads');
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const db = new Database(path.join(__dirname, 'data', 'amanlapor.db'));
 db.pragma('journal_mode = WAL');
 db.exec(`
 CREATE TABLE IF NOT EXISTS reports (code TEXT PRIMARY KEY, category TEXT, location TEXT, incident_date TEXT, description TEXT,
-  status INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
+  attachments TEXT DEFAULT '[]', status INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT, sender TEXT, name TEXT, body TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE INDEX IF NOT EXISTS ix_messages_code ON messages(code);`);
-for (const [t, c] of [['reports', 'updated_at'], ['messages', 'name']]) // migrasi DB versi lama
+for (const [t, c] of [['reports', 'updated_at'], ['reports', 'attachments'], ['messages', 'name']]) // migrasi DB versi lama
   if (!db.prepare(`PRAGMA table_info(${t})`).all().some(x => x.name === c)) db.exec(`ALTER TABLE ${t} ADD COLUMN ${c} TEXT`);
 
 const genCode = customAlphabet('ABCDEFGHJKLMNPQRSTUVWXYZ0123456789', 4);
-const getReport = code => db.prepare('SELECT * FROM reports WHERE code=?').get(code);
+const getReport = code => {
+  const r = db.prepare('SELECT * FROM reports WHERE code=?').get(code);
+  if (!r) return null;
+  try { r.attachments = JSON.parse(r.attachments || '[]'); } catch { r.attachments = []; }
+  if (!Array.isArray(r.attachments)) r.attachments = [];
+  return r;
+};
 const getThread = code => db.prepare('SELECT sender,name,body,created_at FROM messages WHERE code=? ORDER BY id').all(code);
 const addMsg = (code, sender, name, body) => db.prepare('INSERT INTO messages (code,sender,name,body) VALUES (?,?,?,?)').run(code, sender, name, body);
 const txt = (v, max) => String(v ?? '').trim().slice(0, max);
+const normDate = v => {
+  const s = txt(v, 30);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : s;
+};
 
 // ---- Middleware keamanan ----
 const app = express();
@@ -34,11 +46,12 @@ app.use((_req, res, next) => {
   res.set({
     'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer',
     'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; " +
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; frame-ancestors 'none'",
   });
   next();
 });
-app.use(express.json({ limit: '20kb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use('/uploads', express.static(UPLOAD_DIR));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const hits = new Map(); // rate limit sederhana per IP + nama rute
@@ -60,8 +73,30 @@ app.post('/api/reports', limit('create', 10, 3600e3), (req, res) => {
   if (!CATS.includes(category) || !description) return res.status(400).json({ error: 'Kategori dan kronologi wajib diisi.' });
   let code;
   do code = `AMAN-${genCode()}-${genCode()}`; while (getReport(code));
-  db.prepare('INSERT INTO reports (code,category,location,incident_date,description) VALUES (?,?,?,?,?)')
-    .run(code, category, txt(b.location, 200), txt(b.incident_date, 30), description);
+
+  const rawAttachments = Array.isArray(b.attachments) ? b.attachments.slice(0, 10) : [];
+  const savedAttachments = [];
+  rawAttachments.forEach((att, idx) => {
+    if (!att || typeof att.data !== 'string') return;
+    const match = att.data.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return;
+    const mime = txt(match[1], 100);
+    const buf = Buffer.from(match[2], 'base64');
+    if (!buf.length || buf.length > 15 * 1024 * 1024) return;
+    const origName = txt(att.name || `bukti-${idx + 1}`, 120);
+    const safeBase = origName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const fileName = `${code}-${idx + 1}-${Date.now()}-${safeBase}`;
+    fs.writeFileSync(path.join(UPLOAD_DIR, fileName), buf);
+    savedAttachments.push({
+      name: origName,
+      type: mime,
+      size: buf.length,
+      url: `/uploads/${fileName}`
+    });
+  });
+
+  db.prepare('INSERT INTO reports (code,category,location,incident_date,description,attachments) VALUES (?,?,?,?,?,?)')
+    .run(code, category, txt(b.location, 200), normDate(b.incident_date), description, JSON.stringify(savedAttachments));
   addMsg(code, 'system', null, 'Laporan diterima dan sedang menunggu verifikasi petugas.');
   res.json({ code });
 });

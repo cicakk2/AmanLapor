@@ -40,10 +40,40 @@ async function openDetail(code) {
   const form = h('form', 'flex gap-space-sm', '', [msg, h('button', 'btn', 'Kirim')]);
   form.onsubmit = async e => { e.preventDefault(); if (!msg.value.trim()) return; await api(`/reports/${code}/messages`, { body: msg.value }); openDetail(code); };
   const row = (k, v) => h('div', '', '', [h('div', 'font-label-sm text-label-sm text-on-surface-variant', k), h('div', 'font-body-sm text-body-sm', v)]);
+
+  const atts = Array.isArray(r.attachments) ? r.attachments : [];
+  const evidenceNodes = atts.length ? atts.map(att => {
+    const isImg = (att.type && att.type.startsWith('image/')) || /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(att.name || att.url || '');
+    const sizeText = att.size ? ` (${Math.max(1, Math.round(att.size / 1024))} KB)` : '';
+    const link = h('a', 'inline-flex items-center gap-1 text-primary font-label-sm text-label-sm hover:underline break-all', '', [
+      icon(isImg ? 'image' : 'attachment', 'text-[16px] shrink-0'),
+      h('span', '', (att.name || 'Berkas Bukti') + sizeText),
+      icon('open_in_new', 'text-[14px] shrink-0')
+    ]);
+    link.href = att.url; link.target = '_blank'; link.rel = 'noopener';
+    if (!isImg && att.name) link.download = att.name;
+
+    if (isImg) {
+      const img = document.createElement('img');
+      img.src = att.url;
+      img.alt = att.name || 'Bukti laporan';
+      img.className = 'w-full max-h-60 object-contain rounded-lg bg-surface border border-outline-variant/40 cursor-pointer';
+      img.onclick = () => window.open(att.url, '_blank', 'noopener');
+      return h('div', 'bg-surface-container-low rounded-lg p-space-sm flex flex-col gap-space-xs', '', [img, link]);
+    }
+    return h('div', 'bg-surface-container-low rounded-lg p-space-sm flex items-center justify-between', '', [link]);
+  }) : [h('div', 'font-body-sm text-body-sm text-on-surface-variant italic', 'Tidak ada lampiran bukti.')];
+
+  const evidenceSection = h('div', 'flex flex-col gap-space-xs', '', [
+    h('div', 'font-label-sm text-label-sm text-on-surface-variant', `Bukti pendukung (${atts.length})`),
+    h('div', 'flex flex-col gap-space-sm', '', evidenceNodes)
+  ]);
+
   $('detail').replaceChildren(
     h('h2', 'font-title text-title', code), row('Kategori', CATS[r.category] || r.category), row('Lokasi', r.location || '-'),
-    row('Tanggal kejadian', r.incident_date || '-'), row('Dilaporkan', fmt(r.created_at)),
+    row('Tanggal kejadian', fmtDate(r.incident_date)), row('Dilaporkan', fmt(r.created_at)),
     h('p', 'font-body-sm text-body-sm whitespace-pre-wrap break-words bg-surface-container-low rounded-lg p-space-md', r.description),
+    evidenceSection,
     row('Ubah status', ''), sel,
     h('div', 'flex flex-col gap-space-xs max-h-64 overflow-y-auto', '', r.messages.map(m =>
       h('div', 'font-body-sm text-body-sm rounded-lg p-space-sm ' + (m.sender === 'citizen' ? 'bg-surface-container-low' : 'bg-tertiary-fixed/40'), '', [
