@@ -130,16 +130,16 @@
 <div class="flex flex-col gap-space-xs">
 <label class="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-space-xs" for="dateInput">
 <span class="material-symbols-outlined text-[18px] text-primary">calendar_month</span>
-<span class="">Tanggal Kejadian (dd-mm-yyyy)</span>
+<span class="">Tanggal Kejadian</span>
 </label>
 <div class="relative flex items-center">
-<input class="w-full h-12 pl-space-md pr-12 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/70 focus:outline-none focus:bg-surface-container-lowest shadow-sm transition-all" id="dateInput" inputmode="numeric" maxlength="10" pattern="(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-[0-9]{4}" placeholder="dd-mm-yyyy" required="" title="Gunakan format dd-mm-yyyy, contoh: 14-05-2025" type="text" value="14-05-2025">
-<button aria-label="Pilih tanggal dari kalender" class="absolute right-2 w-9 h-9 rounded-lg text-primary hover:bg-surface-container flex items-center justify-center transition-colors" onclick="openNativeDatePicker()" type="button">
+<input class="w-full h-12 px-space-md bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:bg-surface-container-lowest shadow-sm transition-all" id="dateInput" inputmode="numeric" maxlength="10" pattern="(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-[0-9]{4}" placeholder="dd-mm-yyyy" required="" type="text" value="14-05-2025">
+<button aria-label="Pilih tanggal" class="absolute right-2 w-9 h-9 rounded-lg text-on-surface-variant hover:text-primary flex items-center justify-center transition-colors" onclick="openNativeDatePicker()" type="button">
 <span class="material-symbols-outlined text-[20px]">calendar_today</span>
 </button>
 <input aria-hidden="true" class="sr-only pointer-events-none" id="datePickerNative" onchange="syncFromNativePicker(this)" tabindex="-1" type="date" value="2025-05-14">
 </div>
-<span class="font-label-sm text-label-sm text-on-surface-variant">Format: dd-mm-yyyy. Perkiraan tanggal kejadian atau saat penemuan masalah.</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Perkiraan tanggal kejadian atau saat penemuan masalah.</span>
 </div>
 </div>
 </section>
@@ -192,32 +192,19 @@
               Identitas Anda sepenuhnya dirahasiakan dan tidak dipublikasikan ke pihak luar.</p>
 </div>
 </div>
-<!-- Section 6: Slide to Submit Challenge & Action Submit Bar -->
-<div class="bg-surface-container-lowest p-space-lg md:p-space-xl rounded-xl shadow-sm flex flex-col gap-space-md">
-<div class="flex flex-col gap-1">
-<div class="flex items-center justify-between">
-<span class="font-label-lg text-label-lg text-on-surface font-semibold flex items-center gap-space-xs">
-<span class="material-symbols-outlined text-[20px] text-primary">security</span>
-<span>Verifikasi Keamanan (Anti-Spam)</span>
-</span>
-<span class="font-label-sm text-label-sm text-on-surface-variant" id="slideStatusBadge">Belum terverifikasi</span>
-</div>
-<p class="font-body-sm text-body-sm text-on-surface-variant">Geser tombol dari kiri ke kanan sampai titik akhir untuk mengaktifkan fungsi pengiriman laporan.</p>
-</div>
-<!-- Slide to Submit Track -->
-<div aria-label="Geser tombol dari kiri ke kanan sampai titik akhir untuk mengaktifkan pengiriman" class="relative w-full h-14 bg-surface-container rounded-xl overflow-hidden select-none shadow-inner flex items-center p-1 border border-outline-variant/40" id="slideTrack">
-<div class="absolute left-0 top-0 bottom-0 bg-primary/20 transition-none pointer-events-none" id="slideProgress" style="width: 0px;"></div>
-<span class="w-full text-center font-label-md text-label-md text-on-surface-variant pointer-events-none z-10 px-14 truncate transition-colors" id="slideText">Geser ke kanan untuk mengaktifkan pengiriman &rarr;</span>
-<button aria-label="Tombol geser verifikasi" class="absolute left-1 top-1 bottom-1 w-12 rounded-lg bg-primary text-on-primary shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing z-20 focus:outline-none focus:ring-2 focus:ring-primary/50" id="slideThumb" type="button">
+<!-- Section 6: Action Submit Bar -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-md pt-space-md">
+<div aria-label="Geser tombol dari kiri ke kanan sampai titik akhir untuk mengaktifkan fungsi pengiriman" class="relative w-full sm:flex-1 h-14 bg-surface-container-low rounded-xl overflow-hidden select-none shadow-sm flex items-center p-1" id="slideTrack">
+<div class="absolute left-0 top-0 bottom-0 bg-primary/20 pointer-events-none" id="slideProgress" style="width: 0px;"></div>
+<span class="w-full text-center font-label-md text-label-md text-on-surface-variant pointer-events-none z-10 px-14 truncate" id="slideText">Geser ke kanan untuk mengaktifkan pengiriman</span>
+<button aria-label="Tombol geser verifikasi" class="absolute left-1 top-1 bottom-1 w-12 rounded-lg bg-primary text-on-primary shadow-sm flex items-center justify-center cursor-grab active:cursor-grabbing z-20 focus:outline-none" id="slideThumb" type="button">
 <span class="material-symbols-outlined text-[22px]" id="slideIcon">keyboard_double_arrow_right</span>
 </button>
 </div>
-<div class="flex flex-col sm:flex-row items-center justify-end gap-space-md pt-space-xs">
-<button class="w-full sm:w-auto h-14 px-space-xl bg-surface-container-highest text-on-surface-variant opacity-60 cursor-not-allowed rounded-xl font-label-lg text-label-lg transition-all flex items-center justify-center gap-space-sm shrink-0" disabled="" id="submitBtn" type="submit">
-<span id="submitBtnText">Kirim Laporan &amp; Dapatkan Kode</span>
+<button class="w-full sm:w-auto h-14 px-space-xl bg-primary text-on-primary rounded-xl font-label-lg text-label-lg shadow-md hover:bg-primary-container hover:shadow-lg active:scale-[0.99] transition-all flex items-center justify-center gap-space-sm shrink-0 opacity-50 cursor-not-allowed" disabled="" id="submitBtn" type="submit">
+<span class="">Kirim Laporan &amp; Dapatkan Kode</span>
 <span class="material-symbols-outlined text-[22px]">arrow_forward</span>
 </button>
-</div>
 </div>
 </form>
 </div>
@@ -279,7 +266,6 @@
       });
     }
 
-    // ---- Date Format (dd-mm-yyyy) Helpers ----
     function formatToDDMMYYYY(val) {
       const digits = String(val || '').replace(/\D/g, '').slice(0, 8);
       if (digits.length <= 2) return digits;
@@ -321,14 +307,6 @@
       const nativePicker = document.getElementById('datePickerNative');
       if (!dateInput) return;
 
-      // Set default date to today in dd-mm-yyyy format
-      const now = new Date();
-      const dd = String(now.getDate()).padStart(2, '0');
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const yyyy = String(now.getFullYear());
-      dateInput.value = `${dd}-${mm}-${yyyy}`;
-      if (nativePicker) nativePicker.value = `${yyyy}-${mm}-${dd}`;
-
       dateInput.addEventListener('input', () => {
         dateInput.value = formatToDDMMYYYY(dateInput.value);
         if (isValidDDMMYYYY(dateInput.value)) {
@@ -362,10 +340,9 @@
       }
     }
 
-    // ---- File Upload & Preview Management ----
-    function addFilesToState(fileList) {
-      if (!fileList || fileList.length === 0) return;
-      Array.from(fileList).forEach(file => {
+    function handleFileSelect(input) {
+      if (!input.files || input.files.length === 0) return;
+      Array.from(input.files).forEach(file => {
         if (file.size > 15 * 1024 * 1024) {
           alert(`Ukuran berkas "${file.name}" melebihi batas maksimal 15 MB.`);
           return;
@@ -375,12 +352,8 @@
           uploadedFiles.push(file);
         }
       });
-      renderFilePreviewList();
-    }
-
-    function handleFileSelect(input) {
-      addFilesToState(input.files);
       input.value = '';
+      renderFilePreviewList();
     }
 
     function removeUploadedFile(index) {
@@ -394,43 +367,19 @@
 
       uploadedFiles.forEach((file, idx) => {
         const item = document.createElement('div');
-        item.className = 'flex items-center justify-between p-space-md bg-surface-container-low rounded-lg shadow-sm gap-space-sm';
-
-        const left = document.createElement('div');
-        left.className = 'flex items-center gap-space-sm truncate min-w-0';
-
-        if (file.type && file.type.startsWith('image/')) {
-          const thumb = document.createElement('img');
-          thumb.className = 'w-12 h-12 rounded-lg object-cover shrink-0 border border-outline-variant/40 bg-surface';
-          thumb.alt = file.name;
-          const reader = new FileReader();
-          reader.onload = e => { thumb.src = e.target.result; };
-          reader.readAsDataURL(file);
-          left.appendChild(thumb);
-        } else {
-          const iconSpan = document.createElement('span');
-          iconSpan.className = 'material-symbols-outlined text-primary text-[22px] shrink-0';
-          iconSpan.textContent = 'attachment';
-          left.appendChild(iconSpan);
-        }
-
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'font-label-md text-label-md text-on-surface truncate';
-        nameSpan.textContent = file.name;
-
-        const sizeSpan = document.createElement('span');
-        sizeSpan.className = 'font-label-sm text-label-sm text-on-surface-variant shrink-0';
-        sizeSpan.textContent = `(${Math.max(1, Math.round(file.size / 1024))} KB)`;
-
-        left.append(nameSpan, sizeSpan);
-
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.className = 'text-on-surface-variant hover:text-error p-1 shrink-0 transition-colors';
-        removeBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">close</span>';
-        removeBtn.onclick = () => removeUploadedFile(idx);
-
-        item.append(left, removeBtn);
+        item.className = 'flex items-center justify-between p-space-md bg-surface-container-low rounded-lg shadow-sm';
+        item.innerHTML = `
+          <div class="flex items-center gap-space-sm truncate">
+            <span class="material-symbols-outlined text-primary text-[20px]">attachment</span>
+            <span class="font-label-md text-label-md text-on-surface truncate"></span>
+            <span class="font-label-sm text-label-sm text-on-surface-variant">(${(file.size / 1024).toFixed(0)} KB)</span>
+          </div>
+          <button type="button" class="text-on-surface-variant hover:text-on-surface p-1">
+            <span class="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        `;
+        item.querySelector('.truncate > .truncate').textContent = file.name;
+        item.querySelector('button').onclick = () => removeUploadedFile(idx);
         previewList.appendChild(item);
       });
 
@@ -461,7 +410,6 @@
       });
     }
 
-    // ---- Slide to Submit Challenge ----
     function setSlideVerifiedState(verified) {
       isSlideVerified = verified;
       const track = document.getElementById('slideTrack');
@@ -469,7 +417,6 @@
       const progress = document.getElementById('slideProgress');
       const text = document.getElementById('slideText');
       const icon = document.getElementById('slideIcon');
-      const badge = document.getElementById('slideStatusBadge');
       const submitBtn = document.getElementById('submitBtn');
 
       if (!track || !thumb || !progress || !text || !submitBtn) return;
@@ -481,30 +428,22 @@
         thumb.style.left = `${maxLeft}px`;
         progress.style.width = '100%';
         progress.className = 'absolute left-0 top-0 bottom-0 bg-primary-fixed/70 pointer-events-none';
-        text.textContent = 'Terverifikasi — Silakan kirim laporan Anda';
+        text.textContent = 'Verifikasi berhasil';
         text.className = 'w-full text-center font-label-md text-label-md text-on-primary-fixed font-semibold pointer-events-none z-10 px-14 truncate';
         icon.textContent = 'check';
-        if (badge) {
-          badge.textContent = 'Terverifikasi';
-          badge.className = 'font-label-sm text-label-sm text-primary font-semibold';
-        }
         submitBtn.disabled = false;
-        submitBtn.className = 'w-full sm:w-auto h-14 px-space-xl bg-primary text-on-primary rounded-xl font-label-lg text-label-lg shadow-md hover:bg-primary-container hover:shadow-lg active:scale-[0.99] transition-all flex items-center justify-center gap-space-sm shrink-0 cursor-pointer';
+        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
       } else {
         thumb.style.transition = 'left 0.25s ease-out';
         progress.style.transition = 'width 0.25s ease-out';
         thumb.style.left = '4px';
         progress.style.width = '0px';
         progress.className = 'absolute left-0 top-0 bottom-0 bg-primary/20 pointer-events-none';
-        text.innerHTML = 'Geser ke kanan untuk mengaktifkan pengiriman &rarr;';
+        text.textContent = 'Geser ke kanan untuk mengaktifkan pengiriman';
         text.className = 'w-full text-center font-label-md text-label-md text-on-surface-variant pointer-events-none z-10 px-14 truncate';
         icon.textContent = 'keyboard_double_arrow_right';
-        if (badge) {
-          badge.textContent = 'Belum terverifikasi';
-          badge.className = 'font-label-sm text-label-sm text-on-surface-variant';
-        }
         submitBtn.disabled = true;
-        submitBtn.className = 'w-full sm:w-auto h-14 px-space-xl bg-surface-container-highest text-on-surface-variant opacity-60 cursor-not-allowed rounded-xl font-label-lg text-label-lg transition-all flex items-center justify-center gap-space-sm shrink-0';
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
       }
     }
 
@@ -563,51 +502,32 @@
       window.addEventListener('touchmove', onMove, { passive: true });
       window.addEventListener('touchend', onEnd);
 
-      // DropZone drag and drop support
       const dropZone = document.getElementById('dropZone');
       if (dropZone) {
-        dropZone.addEventListener('dragover', e => {
-          e.preventDefault();
-          dropZone.classList.add('ring-2', 'ring-primary');
-        });
-        dropZone.addEventListener('dragleave', () => {
-          dropZone.classList.remove('ring-2', 'ring-primary');
-        });
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); });
         dropZone.addEventListener('drop', e => {
           e.preventDefault();
-          dropZone.classList.remove('ring-2', 'ring-primary');
           if (e.dataTransfer && e.dataTransfer.files) {
-            addFilesToState(e.dataTransfer.files);
+            handleFileSelect({ files: e.dataTransfer.files, value: '' });
           }
         });
       }
     }
 
     async function handleSubmit() {
-      if (!isSlideVerified) {
-        alert('Silakan geser tombol verifikasi dari kiri ke kanan sampai titik akhir terlebih dahulu.');
-        return;
-      }
+      if (!isSlideVerified) return;
 
       const dateVal = document.getElementById('dateInput')?.value || '';
       if (!isValidDDMMYYYY(dateVal)) {
         alert('Format tanggal kejadian harus dd-mm-yyyy (contoh: 14-05-2025).');
-        document.getElementById('dateInput')?.focus();
         return;
       }
-
-      const submitBtn = document.getElementById('submitBtn');
-      const submitBtnText = document.getElementById('submitBtnText');
-      if (submitBtn) submitBtn.disabled = true;
-      if (submitBtnText) submitBtnText.textContent = 'Mengirim Laporan...';
 
       let attachments = [];
       try {
         attachments = await Promise.all(uploadedFiles.map(readFileAsDataURL));
-      } catch (err) {
-        alert('Gagal memproses berkas lampiran.');
-        if (submitBtn) submitBtn.disabled = false;
-        if (submitBtnText) submitBtnText.textContent = 'Kirim Laporan & Dapatkan Kode';
+      } catch (e) {
+        alert('Gagal membaca berkas lampiran.');
         return;
       }
 
@@ -623,21 +543,10 @@
       try {
         const res = await fetch('/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const data = await res.json();
-        if (!res.ok) {
-          alert(data.error || 'Gagal mengirim laporan.');
-          if (submitBtn) submitBtn.disabled = false;
-          if (submitBtnText) submitBtnText.textContent = 'Kirim Laporan & Dapatkan Kode';
-          return;
-        }
+        if (!res.ok) { alert(data.error || 'Gagal mengirim laporan.'); return; }
         code = data.code;
-      } catch (e) {
-        alert('Tidak dapat terhubung ke server.');
-        if (submitBtn) submitBtn.disabled = false;
-        if (submitBtnText) submitBtnText.textContent = 'Kirim Laporan & Dapatkan Kode';
-        return;
-      }
+      } catch (e) { alert('Tidak dapat terhubung ke server.'); return; }
 
-      if (submitBtnText) submitBtnText.textContent = 'Kirim Laporan & Dapatkan Kode';
       document.getElementById('generatedCode').innerText = code;
       document.getElementById('goToStatusBtn').href = 'status.html?code=' + encodeURIComponent(code);
 
@@ -656,8 +565,7 @@
       card.classList.add('scale-95');
       document.getElementById('complaintForm').reset();
       uploadedFiles = [];
-      renderFilePreviewList();
-      initDateInput();
+      document.getElementById('filePreviewList').innerHTML = '';
       setSlideVerifiedState(false);
       updateCategorySelection();
     }
@@ -671,7 +579,7 @@
       });
     }
 
-    // Set initial state on load
+    // Set initial category styling state on load
     document.addEventListener('DOMContentLoaded', () => {
       updateCategorySelection();
       initDateInput();
